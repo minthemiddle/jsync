@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSONbin Updater</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        textarea,
+        input {
+            border: 1px solid #949494;
+            padding: 4px;
+        }
+    </style>
+</head>
+<body class="p-8">
+    <div x-data="uploadedJson()">
+        <div>
+            <label>Master Key</label><br>
+            <input x-model="masterKey" placeholder="Enter X-Master-Key" class="font-mono w-full"><br>
+        </div>
+        <div class="mt-2">
+            <label>Bin ID</label><br>
+            <input x-model="binId" placeholder="Enter Bin ID" class="font-mono w-full"><br>
+        </div>
+        
+        <div class="mt-2">
+            <textarea x-model="uploadedJsonContent" rows="10" placeholder="Enter JSON" class="font-mono w-full"></textarea><br>
+        </div>
+        
+        <div class="mt-2">
+            <button x-on:click="updateJson(masterKey, binId, uploadedJsonContent)" class="bg-black px-3 py-2 text-white">▴ Update JSON</button>
+            <button x-on:click="downloadJson(masterKey, binId)" class="bg-black px-3 py-2 text-white">▾ Download JSON</button>
+        </div>
+        
+        <div class="mt-2">
+            <details>
+                <summary>Response</summary>
+                <pre x-text="responseMessage"></pre>
+            </details>
+        </div>
+       
+    </div>
+
+    <script>
+        function getHeaders(masterKey) {
+            return {
+                'Content-Type': 'application/json',
+                'X-Master-Key': masterKey
+            };
+        }
+
+        function handleError(error) {
+            console.error(error);
+            return 'An error occurred.';
+        }
+
+        function handleSuccess(data) {
+            return JSON.stringify(data, null, 2);
+        }
+
+        function fetchJson(url, method, headers, body = null) {
+            const fetchOptions = {
+                method: method,
+                headers: headers
+            };
+
+            if (method !== 'GET') {
+                fetchOptions.body = JSON.stringify(body);
+            }
+
+            return fetch(url, fetchOptions)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .catch(handleError);
+        }
+
+        function uploadedJson() {
+            return {
+                masterKey: '',
+                binId: '',
+                uploadedJsonContent: '',
+                responseMessage: '',
+                updateJson(masterKey, binId, jsonContent) {
+                    const headers = getHeaders(masterKey);
+                    fetchJson(`https://api.jsonbin.io/v3/b/${binId}`, 'PUT', headers, JSON.parse(jsonContent))
+                        .then(data => this.responseMessage = handleSuccess(data))
+                        .catch(error => this.responseMessage = error);
+                },
+                downloadJson(masterKey, binId) {
+                    const headers = getHeaders(masterKey);
+                    fetchJson(`https://api.jsonbin.io/v3/b/${binId}`, 'GET', headers)
+                        .then(data => {
+                            this.uploadedJsonContent = JSON.stringify(data.record, null, 2);
+                            this.responseMessage = handleSuccess(data);
+                        })
+                        .catch(error => this.responseMessage = error);
+                }
+            };
+        }
+    </script>
+</body>
+</html>
